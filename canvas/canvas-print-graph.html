@@ -1,0 +1,363 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>ePOS-Print Sample Program</title>
+<!-- CSS -->
+<style type="text/css">
+body {
+    background-color: #ffffff;
+    color: #333333;
+}
+table, tr, td {
+    border: 1px solid #666666;
+    border-collapse: collapse;
+    color: #333333;
+    background-color: #eeeeee;
+}
+th {
+    border: 1px solid #666666;
+    border-collapse: collapse;
+    color: #333333;
+    background-color: #cccccc;
+}
+.center {
+    text-align: center;
+}
+</style>
+<!-- Script -->
+<script type="text/javascript" src="epos-print-4.1.0.js"></script>
+<script type="text/javascript">
+<!--
+
+    // draw rectangle
+    function drawRect() {
+        // get context of canvas
+        var canvas = document.getElementById('canvas');
+        if (canvas.getContext) {
+            var context = canvas.getContext('2d');
+            // rect
+            var x = parseInt(document.getElementById('rectx').value);
+            var y = parseInt(document.getElementById('recty').value);
+            var w = parseInt(document.getElementById('rectw').value);
+            var h = parseInt(document.getElementById('recth').value);
+            context.beginPath();
+            context.rect(x, y, w, h);
+            context.closePath();
+            // fill
+            var fill = parseInt(document.getElementById('fill').value);
+            var col1 = document.getElementById('col1').value;
+            var col2 = document.getElementById('col2').value;
+            switch (fill) {
+                case 0:
+                    // stroke
+                    context.stroke();
+                    break;
+                case 1:
+                    // fill
+                    context.fillStyle = col1;
+                    context.fill();
+                    break;
+                case 2:
+                    // linear gradient
+                    var linear = context.createLinearGradient(x, y, x + w, x + h);
+                    linear.addColorStop(0, col1);
+                    linear.addColorStop(1, col2);
+                    context.fillStyle = linear;
+                    context.fill();
+                    break;
+                case 3:
+                    // radical gradient
+                    var a = w / 2;
+                    var b = h / 2;
+                    var u = x + a;
+                    var v = y + b;
+                    var radial = context.createRadialGradient(u, v, 0, u, v, Math.sqrt(a * a + b * b));
+                    radial.addColorStop(0, col1);
+                    radial.addColorStop(1, col2);
+                    context.fillStyle = radial;
+                    context.fill();
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    // draw circle
+    function drawArc() {
+        // get context of canvas
+        var canvas = document.getElementById('canvas');
+        if (canvas.getContext) {
+            var context = canvas.getContext('2d');
+            // arc
+            var x = parseInt(document.getElementById('arcx').value);
+            var y = parseInt(document.getElementById('arcy').value);
+            var r = parseInt(document.getElementById('arcr').value);
+            context.beginPath();
+            context.arc(x, y, r, 0, Math.PI * 2, false);
+            context.closePath();
+            // fill
+            var fill = parseInt(document.getElementById('fill').value);
+            var col1 = document.getElementById('col1').value;
+            var col2 = document.getElementById('col2').value;
+            switch (fill) {
+                case 0:
+                    // stroke
+                    context.stroke();
+                    break;
+                case 1:
+                    // fill
+                    context.fillStyle = col1;
+                    context.fill();
+                    break;
+                case 2:
+                    // linear gradient
+                    var s = r / Math.sqrt(2);
+                    var linear = context.createLinearGradient(x - s, y - s, x + s, y + s);
+                    linear.addColorStop(0, col1);
+                    linear.addColorStop(1, col2);
+                    context.fillStyle = linear;
+                    context.fill();
+                    break;
+                case 3:
+                    // radial gradient
+                    var radial = context.createRadialGradient(x, y, 0, x, y, r);
+                    radial.addColorStop(0, col1);
+                    radial.addColorStop(1, col2);
+                    context.fillStyle = radial;
+                    context.fill();
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+
+    // swap color
+    function swapColor() {
+        var col1 = document.getElementById('col1').value;
+        var col2 = document.getElementById('col2').value;
+        document.getElementById('col1').value = col2;
+        document.getElementById('col2').value = col1;
+    }
+
+
+    // clear image
+    function clearImage() {
+        // get context of canvas
+        var canvas = document.getElementById('canvas');
+        if (canvas.getContext) {
+            // clear canvas
+            var context = canvas.getContext('2d');
+            context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    // print canvas
+    function printCanvas() {
+        // create print object
+        var address = document.getElementById('address').value;
+        var epos = new epson.CanvasPrint(address);
+        // register callback function
+        epos.onreceive = function (res) {
+            // show message
+            alert('Print ' + (res.success ? 'Success' : 'Failure') + '\nCode: ' + res.code + '\n' + getStatusText(epos, res.status));
+        }
+        // register callback function
+        epos.onerror = function (err) {
+            // show message
+            alert('HTTP Status Code: ' + err.status + '\n' + err.responseText);
+        }
+        // print
+        var mode = document.getElementById('mode').value;
+        var brightness = document.getElementById('brightness').value;
+        var halftone = document.getElementById('halftone').value;
+        var align = document.getElementById('align').value;
+        var color = document.getElementById('color').value;
+        var cut = document.getElementById('cut').checked;
+        var canvas = document.getElementById('canvas');
+        epos.mode = epos[mode];
+        epos.brightness = brightness;
+        epos.halftone = epos[halftone];
+        epos.align = epos[align];
+        epos.color = epos[color];
+        epos.cut = cut;
+        epos.print(canvas);
+    }
+
+    // get status text
+    function getStatusText(e, status) {
+        var s = 'Status: \n';
+        if (status & e.ASB_NO_RESPONSE) {
+            s += ' No printer response\n';
+        }
+        if (status & e.ASB_PRINT_SUCCESS) {
+            s += ' Print complete\n';
+        }
+        if (status & e.ASB_DRAWER_KICK) {
+            s += ' Status of the drawer kick number 3 connector pin = "H"\n';
+        }
+        if (status & e.ASB_BATTERY_OFFLINE) {
+            s += ' Offline due to a weak battery (only for supported models)\n';
+        }
+        if (status & e.ASB_OFF_LINE) {
+            s += ' Offline status\n';
+        }
+        if (status & e.ASB_COVER_OPEN) {
+            s += ' Cover is open\n';
+        }
+        if (status & e.ASB_PAPER_FEED) {
+            s += ' Paper feed switch is feeding paper\n';
+        }
+        if (status & e.ASB_WAIT_ON_LINE) {
+            s += ' Waiting for online recovery\n';
+        }
+        if (status & e.ASB_PANEL_SWITCH) {
+            s += ' Panel switch is ON\n';
+        }
+        if (status & e.ASB_MECHANICAL_ERR) {
+            s += ' Mechanical error generated\n';
+        }
+        if (status & e.ASB_AUTOCUTTER_ERR) {
+            s += ' Auto cutter error generated\n';
+        }
+        if (status & e.ASB_UNRECOVER_ERR) {
+            s += ' Unrecoverable error generated\n';
+        }
+        if (status & e.ASB_AUTORECOVER_ERR) {
+            s += ' Auto recovery error generated\n';
+        }
+        if (status & e.ASB_RECEIPT_NEAR_END) {
+            s += ' No paper in the roll paper near end detector\n';
+        }
+        if (status & e.ASB_RECEIPT_END) {
+            s += ' No paper in the roll paper end detector\n';
+        }
+        if (status & e.ASB_BUZZER) {
+            s += ' Sounding the buzzer (only for supported models)\n';
+        }
+        if (status & e.ASB_WAIT_REMOVE_LABEL) {
+            s += ' Waiting to remove label (only for supported models)\n';
+        }
+        if (status & e.ASB_NO_LABEL) {
+            s += ' No paper in the label peeling detector (only for supported models)\n';
+        }
+        if (status & e.ASB_SPOOLER_IS_STOPPED) {
+            s += ' Stop the spooler\n';
+        }
+        return s;
+    }
+
+//-->
+</script>
+</head>
+
+<body>
+
+<form action="" onsubmit="return false;">
+<table style="width:100%;">
+    <thead>
+        <tr>
+            <th colspan="2">Canvas - Graphics Editing</th>
+        </tr>
+    </thead>
+    <tbody>
+
+        <tr>
+            <td style="width:360;">
+                <canvas id="canvas" width="360" height="512"></canvas>
+            </td>
+            <td>
+                Fill Settings<br />
+                <br />
+                Style
+                <select id="fill">
+                    <option value="0">Stroke</option>
+                    <option value="1">Fill</option>
+                    <option value="2" selected="selected">Linear Gradient</option>
+                    <option value="3">Radial Gradient</option>
+                </select>
+                <br />
+                Color 1<input id="col1" type="text" size="10" value="gray" /> "#rrggbb"<br />
+                <input type="button" value="Swap Color" onclick="swapColor()" /><br />
+                Color 2<input id="col2" type="text" size="10" value="white" /> "#rrggbb"<br />
+                <br />
+                Rectangle<br />
+                <br />
+                Position<br />
+                x<input id="rectx" type="text" size="5" value="32" /> y<input id="recty" type="text" size="5" value="64" /><br />
+                Size<br />
+                w<input id="rectw" type="text" size="5" value="192" /> h<input id="recth" type="text" size="5" value="192" /><br />
+                <input type="button" value="Draw" onclick="drawRect()" /><br />
+                <br />
+                Circle<br />
+                <br />
+                Center<br />
+                x<input id="arcx" type="text" size="5" value="224" /> y<input id="arcy" type="text" size="5" value="256" /><br />
+                Radius<br />
+                r<input id="arcr" type="text" size="5" value="96" /><br />
+                <input type="button" value="Draw" onclick="drawArc()" /><br />
+                <br />
+                <input type="button" value="Clear" onclick="clearImage()" /><br />
+                <input type="reset" value="Reset" onclick="clearImage()" /><br />
+            </td>
+        </tr>
+
+</tbody>
+</table>
+</form>
+
+<form action="" onsubmit="return false;">
+<table style="width:100%;">
+    <thead>
+        <tr>
+            <th colspan="3">Test Print</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="width:10%;">Property</td>
+            <td style="width:80%;">
+                URL
+                <input id="address" style="width:90%;" type="text" value="http://192.168.192.168/cgi-bin/epos/service.cgi?devid=local_printer&timeout=60000" />
+                <br />
+                Mode
+                <select id="mode">
+                    <option value="MODE_MONO" selected="selected">Monochrome</option>
+                    <option value="MODE_GRAY16">Grayscale (only for supported models)</option>
+                </select>
+                Brightness
+                <input id="brightness" type="text" size="5" value="1.0" />
+                Halftone (Monochrome)
+                <select id="halftone">
+                    <option value="HALFTONE_DITHER">Dither</option>
+                    <option value="HALFTONE_ERROR_DIFFUSION" selected="selected">Error Diffusion</option>
+                    <option value="HALFTONE_THRESHOLD">Threshold</option>
+                </select>
+                <br />
+                Alignment
+                <select id="align">
+                    <option value="ALIGN_LEFT" selected="selected">Left</option>
+                    <option value="ALIGN_CENTER">Center</option>
+                    <option value="ALIGN_RIGHT">Right</option>
+                </select>
+                Color (Monochrome)
+                <select id="color">
+                    <option value="COLOR_NONE">None</option>
+                    <option value="COLOR_1" selected="selected">Color 1</option>
+                    <option value="COLOR_2">Color 2</option>
+                    <option value="COLOR_3">Color 3</option>
+                    <option value="COLOR_4">Color 4</option>
+                </select>
+                &nbsp;&nbsp;
+                <input id="cut" type="checkbox" checked="checked" />Cut Paper
+            </td>
+            <td style="width:10%;" class="center"><input type="button" value="Print" onclick="printCanvas()" /></td>
+        </tr>
+    </tbody>
+</table>
+</form>
+</body>
+</html>

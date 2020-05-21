@@ -1,0 +1,325 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>ePOS-Print Sample Program</title>
+<!-- CSS -->
+<style type="text/css">
+html {
+    -ms-touch-action: none;
+}
+body {
+    background-color: #ffffff;
+    color: #333333;
+}
+table, tr, td {
+    border: 1px solid #666666;
+    border-collapse: collapse;
+    color: #333333;
+    background-color: #eeeeee;
+}
+th {
+    border: 1px solid #666666;
+    border-collapse: collapse;
+    color: #333333;
+    background-color: #cccccc;
+}
+.center {
+    text-align: center;
+}
+#area {
+    margin-left: auto;
+    margin-right: auto;
+    width: 512px;
+    height: 640px;
+}
+#canvas {
+    position: absolute;
+	width: 360px;
+	height: 512px;
+	margin-left: 76px;
+	margin-top: 64px;
+	background-color: white;
+}
+</style>
+<!-- Script -->
+<script type="text/javascript" src="epos-print-4.1.0.js"></script>
+<script type="text/javascript">
+<!--
+
+    // drawing flag
+    var ink = false;
+    // line width
+    var width = 3;
+    // terminal position of line
+    var x0 = 0;
+    var y0 = 0;
+
+    // set line width
+    function setLineWidth(w) {
+        width = w;
+    }
+
+    // draw line
+    function drawLine(x, y) {
+        // get context of canvas
+        var canvas = document.getElementById('canvas');
+        if (canvas.getContext) {
+            var context = canvas.getContext('2d');
+            // set line style
+            context.lineCap = 'round';
+            context.lineJoin = 'round';
+            context.lineWidth = width;
+            // draw line
+            context.beginPath();
+            context.moveTo(x0 - canvas.offsetLeft, y0 - canvas.offsetTop);
+            context.lineTo(x - canvas.offsetLeft, y - canvas.offsetTop);
+            context.stroke();
+            context.closePath();
+            // save terminal position
+            x0 = x;
+            y0 = y;
+        }
+    }
+
+    // start drawing with the mouse
+    function startMouse(event) {
+        x0 = event.pageX;
+        y0 = event.pageY;
+        ink = true;
+    }
+
+    // draw line with the mouse
+    function moveMouse(event) {
+        if (ink) {
+            drawLine(event.pageX, event.pageY);
+        }
+    }
+
+    // end drawing with the mouse
+    function endMouse(event) {
+        moveMouse(event);
+        ink = false;
+    }
+
+    // start drawing with touch
+    function startTouch(event) {
+        event.preventDefault();
+        x0 = event.touches[0].pageX;
+        y0 = event.touches[0].pageY;
+        ink = true;
+    }
+
+    // draw line with touch
+    function moveTouch(event) {
+        event.preventDefault();
+        if (ink) {
+            drawLine(event.touches[0].pageX, event.touches[0].pageY);
+        }
+    }
+
+    // end drawing with touch
+    function endTouch(event) {
+        moveTouch(event);
+        ink = false;
+    }
+
+    // clear image
+    function clearImage() {
+        // get context of canvas
+        var canvas = document.getElementById('canvas');
+        if (canvas.getContext) {
+            var context = canvas.getContext('2d');
+            // clear canvas
+            context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    // print canvas
+    function printCanvas() {
+        // create print object
+        var address = document.getElementById('address').value;
+        var epos = new epson.CanvasPrint(address);
+        // register callback function
+        epos.onreceive = function (res) {
+            // show message
+            alert('Print ' + (res.success ? 'Success' : 'Failure') + '\nCode: ' + res.code + '\n' + getStatusText(epos, res.status));
+        }
+        // register callback function
+        epos.onerror = function (err) {
+            // print message
+            alert('HTTP Status Code: ' + err.status + '\n' + err.responseText);
+        }
+        // print
+        var mode = document.getElementById('mode').value;
+        var brightness = document.getElementById('brightness').value;
+        var halftone = document.getElementById('halftone').value;
+        var align = document.getElementById('align').value;
+        var color = document.getElementById('color').value;
+        var cut = document.getElementById('cut').checked;
+        var canvas = document.getElementById('canvas');
+        epos.mode = epos[mode];
+        epos.brightness = brightness;
+        epos.halftone = epos[halftone];
+        epos.align = epos[align];
+        epos.color = epos[color];
+        epos.cut = cut;
+        epos.print(canvas);
+    }
+
+    // get status text
+    function getStatusText(e, status) {
+        var s = 'Status: \n';
+        if (status & e.ASB_NO_RESPONSE) {
+            s += ' No printer response\n';
+        }
+        if (status & e.ASB_PRINT_SUCCESS) {
+            s += ' Print complete\n';
+        }
+        if (status & e.ASB_DRAWER_KICK) {
+            s += ' Status of the drawer kick number 3 connector pin = "H"\n';
+        }
+        if (status & e.ASB_BATTERY_OFFLINE) {
+            s += ' Offline due to a weak battery (only for supported models)\n';
+        }
+        if (status & e.ASB_OFF_LINE) {
+            s += ' Offline status\n';
+        }
+        if (status & e.ASB_COVER_OPEN) {
+            s += ' Cover is open\n';
+        }
+        if (status & e.ASB_PAPER_FEED) {
+            s += ' Paper feed switch is feeding paper\n';
+        }
+        if (status & e.ASB_WAIT_ON_LINE) {
+            s += ' Waiting for online recovery\n';
+        }
+        if (status & e.ASB_PANEL_SWITCH) {
+            s += ' Panel switch is ON\n';
+        }
+        if (status & e.ASB_MECHANICAL_ERR) {
+            s += ' Mechanical error generated\n';
+        }
+        if (status & e.ASB_AUTOCUTTER_ERR) {
+            s += ' Auto cutter error generated\n';
+        }
+        if (status & e.ASB_UNRECOVER_ERR) {
+            s += ' Unrecoverable error generated\n';
+        }
+        if (status & e.ASB_AUTORECOVER_ERR) {
+            s += ' Auto recovery error generated\n';
+        }
+        if (status & e.ASB_RECEIPT_NEAR_END) {
+            s += ' No paper in the roll paper near end detector\n';
+        }
+        if (status & e.ASB_RECEIPT_END) {
+            s += ' No paper in the roll paper end detector\n';
+        }
+        if (status & e.ASB_BUZZER) {
+            s += ' Sounding the buzzer (only for supported models)\n';
+        }
+        if (status & e.ASB_WAIT_REMOVE_LABEL) {
+            s += ' Waiting to remove label (only for supported models)\n';
+        }
+        if (status & e.ASB_NO_LABEL) {
+            s += ' No paper in the label peeling detector (only for supported models)\n';
+        }
+        if (status & e.ASB_SPOOLER_IS_STOPPED) {
+            s += ' Stop the spooler\n';
+        }
+        return s;
+    }
+
+//-->
+</script>
+</head>
+
+<body>
+
+<form action="" onsubmit="return false;">
+<table style="width:100%;">
+    <thead>
+        <tr>
+            <th colspan="2">Canvas - Handwriting</th>
+        </tr>
+    </thead>
+    <tbody>
+
+        <tr>
+            <td>
+                <div id="area">
+                    <canvas id="canvas" width="360" height="512"
+                        onmousedown="startMouse(event)" onmousemove="moveMouse(event)" onmouseout="endMouse(event)" onmouseup="endMouse(event)"
+                        ontouchstart="startTouch(event)" ontouchmove="moveTouch(event)" ontouchend="endTouch(event)">
+                    </canvas>
+                </div>
+            </td>
+            <td>
+                Pen<br />
+                <input type="radio" name="pen" checked="checked" onclick="setLineWidth(3)" />Thin
+                <input type="radio" name="pen" onclick="setLineWidth(6)" />Medium
+                <input type="radio" name="pen" onclick="setLineWidth(9)" />Thick
+                <br />
+                <br />
+                <input type="button" value="Clear" onclick="clearImage()" />
+                <br />
+            </td>
+        </tr>
+
+</tbody>
+</table>
+</form>
+
+<form action="" onsubmit="return false;">
+<table style="width:100%;">
+    <thead>
+        <tr>
+            <th colspan="3">Test Print</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="width:10%;">Property</td>
+            <td style="width:80%;">
+                URL
+                <input id="address" style="width:90%;" type="text" value="http://192.168.192.168/cgi-bin/epos/service.cgi?devid=local_printer&timeout=60000" />
+                <br />
+                Mode
+                <select id="mode">
+                    <option value="MODE_MONO" selected="selected">Monochrome</option>
+                    <option value="MODE_GRAY16">Grayscale (only for supported models)</option>
+                </select>
+                Brightness
+                <input id="brightness" type="text" size="5" value="1.0" />
+                Halftone (Monochrome)
+                <select id="halftone">
+                    <option value="HALFTONE_DITHER">Dither</option>
+                    <option value="HALFTONE_ERROR_DIFFUSION">Error Diffusion</option>
+                    <option value="HALFTONE_THRESHOLD" selected="selected">Threshold</option>
+                </select>
+                <br />
+                Alignment
+                <select id="align">
+                    <option value="ALIGN_LEFT" selected="selected">Left</option>
+                    <option value="ALIGN_CENTER">Center</option>
+                    <option value="ALIGN_RIGHT">Right</option>
+                </select>
+                Color (Monochrome)
+                <select id="color">
+                    <option value="COLOR_NONE">None</option>
+                    <option value="COLOR_1" selected="selected">Color 1</option>
+                    <option value="COLOR_2">Color 2</option>
+                    <option value="COLOR_3">Color 3</option>
+                    <option value="COLOR_4">Color 4</option>
+                </select>
+                &nbsp;&nbsp;
+                <input id="cut" type="checkbox" checked="checked" />Cut Paper
+            </td>
+            <td style="width:10%;" class="center"><input type="button" value="Print" onclick="printCanvas()" /></td>
+        </tr>
+    </tbody>
+</table>
+</form>
+</body>
+</html>

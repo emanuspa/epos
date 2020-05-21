@@ -1,0 +1,344 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<title>ePOS-Print Sample Program</title>
+<!-- CSS -->
+<style type="text/css">
+body {
+    background-color: #ffffff;
+    color: #333333;
+}
+table, tr, td {
+    border: 1px solid #666666;
+    border-collapse: collapse;
+    color: #333333;
+    background-color: #eeeeee;
+}
+th {
+    border: 1px solid #666666;
+    border-collapse: collapse;
+    color: #333333;
+    background-color: #cccccc;
+}
+.center {
+    text-align: center;
+}
+#canvas {
+	background-color: white;
+}
+</style>
+<!-- Script -->
+<script type="text/javascript" src="epos-print-4.1.0.js"></script>
+<script type="text/javascript" src="barcode.js"></script>
+<script type="text/javascript">
+<!--
+
+    // draw label
+    function drawLabel() {
+
+        // get context of canvas
+        var canvas = document.getElementById('canvas');
+        if (canvas.getContext) {
+            var context = canvas.getContext('2d');
+
+            // frame
+            context.clearRect(0, 0, 384, 160);
+            // line-width
+            context.lineWidth = 2;
+            // stroke-style
+            context.strokeStyle = 'black';
+            // strokeRect
+            context.strokeRect(1, 1, 382, 79);
+            context.strokeRect(1, 80, 382, 79);
+            context.strokeRect(1, 80, 258, 79);
+
+            // name
+            var name = document.getElementById('name').value;
+            // font
+            context.font = 'normal normal bold 40px "Times New Roman", serif';
+            // text-align
+            context.textAlign = 'start';
+            // text-baseline
+            context.textBaseline = 'top';
+            // fill-style
+            context.fillStyle = 'black';
+            // fillText
+            context.fillText(name, 5, 5);
+
+            // description
+            var desc = document.getElementById('desc').value;
+            // font
+            context.font = 'normal normal normal 30px "Arial", sans-serif';
+            // text-align
+            context.textAlign = 'start';
+            // text-baseline
+            context.textBaseline = 'top';
+            // fill-style
+            context.fillStyle = 'black';
+            // fillText
+            context.fillText(desc, 5, 45);
+
+            // code
+            var code = document.getElementById('code').value;
+            // barcode
+            drawEan13(context, code, 13, 85, 2, 50);
+            // font
+            context.font = 'normal normal normal 20px "OCR-B", sans-serif';
+            // text-align
+            context.textAlign = 'center';
+            // text-baseline
+            context.textBaseline = 'top';
+            // fill-style
+            context.fillStyle = 'black';
+            // fillText
+            context.fillText(code, 130, 135);
+
+            // price
+            var price = document.getElementById('price').value;
+            // font
+            context.font = 'normal normal bold 30px "Arial", sans-serif';
+            // text-align
+            context.textAlign = 'end';
+            // text-baseline
+            context.textBaseline = 'middle';
+            // fill-style
+            context.fillStyle = 'black';
+            // fillText
+            context.fillText(price, 379, 120);
+        }
+    }
+    
+    // clear text
+    function clearText() {
+        // get context of canvas
+        var canvas = document.getElementById('canvas');
+        if (canvas.getContext) {
+            var context = canvas.getContext('2d');
+            // clear canvas
+            context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+
+    // print canvas
+    function printCanvas() {
+        // create print object
+        var address = document.getElementById('address').value;
+        var epos = new epson.CanvasPrint(address);
+        // register callback function
+        epos.onreceive = function (res) {
+            // show message
+            alert('Print ' + (res.success ? 'Success' : 'Failure') + '\nCode: ' + res.code + '\n' + getStatusText(epos, res.status));
+        }
+        // register callback function
+        epos.onerror = function (err) {
+            // show message
+            alert('HTTP Status Code: ' + err.status + '\n' + err.responseText);
+        }
+        // print
+        var mode = document.getElementById('mode').value;
+        var brightness = document.getElementById('brightness').value;
+        var halftone = document.getElementById('halftone').value;
+        var align = document.getElementById('align').value;
+        var color = document.getElementById('color').value;
+        var paper = document.getElementById('paper').value;
+        var feed = document.getElementById('feed').value;
+        var cut = document.getElementById('cut').checked;
+        var paperlayout = document.getElementById('paperlayout').checked;
+        var layout = document.getElementById('layout').value;
+        var canvas = document.getElementById('canvas');
+        epos.mode = epos[mode];
+        epos.brightness = brightness;
+        epos.halftone = epos[halftone];
+        epos.align = epos[align];
+        epos.color = epos[color];
+        epos.paper = epos[paper];
+        epos.feed = epos[feed];
+        epos.cut = cut;
+        if (paperlayout && /^\s*\{\s*([a-z_]+\s*:\s*-?\d+(\s*,\s*[a-z_]+\s*:\s*-?\d+)*)?\s*\}\s*$/.test(layout)) {
+            eval('epos.layout = ' + layout);
+        }
+        epos.print(canvas);
+    }
+
+    // get status text
+    function getStatusText(e, status) {
+        var s = 'Status: \n';
+        if (status & e.ASB_NO_RESPONSE) {
+            s += ' No printer response\n';
+        }
+        if (status & e.ASB_PRINT_SUCCESS) {
+            s += ' Print complete\n';
+        }
+        if (status & e.ASB_DRAWER_KICK) {
+            s += ' Status of the drawer kick number 3 connector pin = "H"\n';
+        }
+        if (status & e.ASB_BATTERY_OFFLINE) {
+            s += ' Offline due to a weak battery (only for supported models)\n';
+        }
+        if (status & e.ASB_OFF_LINE) {
+            s += ' Offline status\n';
+        }
+        if (status & e.ASB_COVER_OPEN) {
+            s += ' Cover is open\n';
+        }
+        if (status & e.ASB_PAPER_FEED) {
+            s += ' Paper feed switch is feeding paper\n';
+        }
+        if (status & e.ASB_WAIT_ON_LINE) {
+            s += ' Waiting for online recovery\n';
+        }
+        if (status & e.ASB_PANEL_SWITCH) {
+            s += ' Panel switch is ON\n';
+        }
+        if (status & e.ASB_MECHANICAL_ERR) {
+            s += ' Mechanical error generated\n';
+        }
+        if (status & e.ASB_AUTOCUTTER_ERR) {
+            s += ' Auto cutter error generated\n';
+        }
+        if (status & e.ASB_UNRECOVER_ERR) {
+            s += ' Unrecoverable error generated\n';
+        }
+        if (status & e.ASB_AUTORECOVER_ERR) {
+            s += ' Auto recovery error generated\n';
+        }
+        if (status & e.ASB_RECEIPT_NEAR_END) {
+            s += ' No paper in the roll paper near end detector\n';
+        }
+        if (status & e.ASB_RECEIPT_END) {
+            s += ' No paper in the roll paper end detector\n';
+        }
+        if (status & e.ASB_BUZZER) {
+            s += ' Sounding the buzzer (only for supported models)\n';
+        }
+        if (status & e.ASB_WAIT_REMOVE_LABEL) {
+            s += ' Waiting to remove label (only for supported models)\n';
+        }
+        if (status & e.ASB_NO_LABEL) {
+            s += ' No paper in the label peeling detector (only for supported models)\n';
+        }
+        if (status & e.ASB_SPOOLER_IS_STOPPED) {
+            s += ' Stop the spooler\n';
+        }
+        return s;
+    }
+
+//-->
+</script>
+</head>
+
+<body>
+
+<form action="" onsubmit="return false;">
+<table style="width:100%;">
+    <thead>
+        <tr>
+            <th colspan="2">Canvas - Label Editing</th>
+        </tr>
+    </thead>
+    <tbody>
+
+        <tr>
+            <td style="width:384;">
+                <canvas id="canvas" width="384" height="160"></canvas>
+            </td>
+            <td>
+                Name<br />
+                <input id="name" type="text" value="Name" /><br />
+                <br />
+                Description<br />
+                <input id="desc" type="text" value="Description" /><br />
+                <br />
+                Code<br />
+                <input id="code" type="text" value="201234567890" /><br />
+                <br />
+                Price<br />
+                <input id="price" type="text" value="€19.80" /><br />
+                <br />
+                <input type="button" value="Draw" onclick="drawLabel()" /><br />
+                <br />
+                <br />
+                <input type="button" value="Clear" onclick="clearText()" /><br />
+                <input type="reset" value="Reset" onclick="clearText()" />
+                <br />
+            </td>
+        </tr>
+
+</tbody>
+</table>
+</form>
+
+<form action="" onsubmit="return false;">
+<table style="width:100%;">
+    <thead>
+        <tr>
+            <th colspan="3">Test Print</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="width:10%;">Property</td>
+            <td style="width:80%;">
+                URL
+                <input id="address" style="width:90%;" type="text" value="http://192.168.192.168/cgi-bin/epos/service.cgi?devid=local_printer&timeout=60000" />
+                <br />
+                Mode
+                <select id="mode">
+                    <option value="MODE_MONO" selected="selected">Monochrome</option>
+                    <option value="MODE_GRAY16">Grayscale (only for supported models)</option>
+                </select>
+                Brightness
+                <input id="brightness" type="text" size="5" value="1.0" />
+                Halftone (Monochrome)
+                <select id="halftone">
+                    <option value="HALFTONE_DITHER">Dither</option>
+                    <option value="HALFTONE_ERROR_DIFFUSION">Error Diffusion</option>
+                    <option value="HALFTONE_THRESHOLD" selected="selected">Threshold</option>
+                </select>
+                <br />
+                Alignment
+                <select id="align">
+                    <option value="ALIGN_LEFT" selected="selected">Left</option>
+                    <option value="ALIGN_CENTER">Center</option>
+                    <option value="ALIGN_RIGHT">Right</option>
+                </select>
+                Color (Monochrome)
+                <select id="color">
+                    <option value="COLOR_NONE">None</option>
+                    <option value="COLOR_1" selected="selected">Color 1</option>
+                    <option value="COLOR_2">Color 2</option>
+                    <option value="COLOR_3">Color 3</option>
+                    <option value="COLOR_4">Color 4</option>
+                </select>
+                <br />
+                Paper
+                <select id="paper">
+                    <option value="PAPER_RECEIPT">Receipt</option>
+                    <option value="PAPER_RECEIPT_BM">Receipt (Black Mark)</option>
+                    <option value="PAPER_LABEL" selected="selected">Die Cut Label Paper</option>
+                    <option value="PAPER_LABEL_BM">Die Cut Label Paper (Black Mark)</option>
+                </select>
+                Feed to
+                <select id="feed">
+                    <option value="FEED_PEELING" selected="selected">Peeling</option>
+                    <option value="FEED_CUTTING">Cutting</option>
+                    <option value="FEED_CURRENT_TOF">Current TOF</option>
+                    <option value="FEED_NEXT_TOF">Next TOF</option>
+                </select>
+                &nbsp;&nbsp;
+                <input id="cut" type="checkbox" />Cut Paper
+                <br />
+                <input id="paperlayout" type="checkbox" />Set the paper layout (only for TM-P60II / TM-P80)
+                <br />
+                Layout
+                <input id="layout" style="width:85%;" type="text" value="{ width: 580, height: 0, margin_top: 15, margin_bottom: -15, offset_cut: 25, offset_label: 0 }" />
+            </td>
+            <td style="width:10%;" class="center"><input type="button" value="Print" onclick="printCanvas()" /></td>
+        </tr>
+    </tbody>
+</table>
+</form>
+</body>
+</html>
